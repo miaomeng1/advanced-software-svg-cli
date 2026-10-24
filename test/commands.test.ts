@@ -117,3 +117,44 @@ test('strict arity, numbers and expected errors', async () => {
     assert.match((await run(input))[0]!, /^error:/);
   }
 });
+test('cross-parent grouping preserves preorder and undo restores original ownership', async () => {
+  const { editor, run } = await setup();
+  await run('create g left'); await run('create g right');
+  await run('create circle a 1 2 3 in left'); await run('create circle b 4 5 6 in right');
+  const before = await run('tree');
+  await run('group joined b a');
+  assert.deepEqual(editor.document.find('joined').children.map(shape => shape.id), ['a','b']);
+  assert.equal(editor.document.parentLabel(editor.document.find('joined')), 'svg');
+  await run('undo'); assert.deepEqual(await run('tree'), before);
+});
+test('front means painted last and back means painted first within the same parent', async () => {
+  const { editor, run } = await setup();
+  await run('create g parent');
+  for (const id of ['a','b','c']) await run(`create circle ${id} 1 2 3 in parent`);
+  await run('front a');
+  assert.deepEqual(editor.document.find('parent').children.map(shape => shape.id), ['b','c','a']);
+  await run('back c');
+  assert.deepEqual(editor.document.find('parent').children.map(shape => shape.id), ['c','b','a']);
+});
+test('create accepts the internal-root-looking id and ids stay case-sensitive', async () => {
+  const { editor, run } = await setup();
+  for (const id of ['__root__','A','a']) assert.doesNotMatch((await run(`create g ${id}`))[0]!, /^error:/);
+  assert.equal(editor.document.all().length, 3);
+});
+test('exact geometry for every leaf is moved and scaled; stroke width is not geometry', async () => {
+  const { editor, run } = await setup();
+  const cases = [
+    ['rect', '1 2 3 4', { x:'22', y:'44', width:'6', height:'8' }],
+    ['circle', '1 2 3', { cx:'22', cy:'44', r:'6' }],
+    ['ellipse', '1 2 3 4', { cx:'22', cy:'44', rx:'6', ry:'8' }],
+    ['line', '1 2 3 4', { x1:'22', y1:'44', x2:'26', y2:'48' }],
+    ['text', '1 2 "hello"', { x:'22', y:'44' }],
+  ] as const;
+  for (const [type, args, expected] of cases) {
+    await run(`create ${type} ${type} ${args}`);
+    await run(`move ${type} 10 20`); await run(`scale ${type} 2`);
+    assert.deepEqual(editor.document.find(type).attributes, expected);
+  }
+  await run('set line stroke-width 3'); await run('scale line 2');
+  assert.equal(editor.document.find('line').attributes['stroke-width'], '3');
+});

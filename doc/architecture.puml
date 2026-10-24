@@ -1,0 +1,26 @@
+@startuml
+skinparam componentStyle rectangle
+left to right direction
+component "main.ts\nComposition root" as main
+package "src/cli" {
+  component "Repl / Tokenizer\nCommandRunner / CommandRegistry" as cli
+}
+package "src/application" {
+  component "Command + concrete commands\nEditor / History / HistoryEntry\nArguments / ShapePresenter" as app
+  interface "DocumentStore" as store
+}
+package "src/domain" {
+  component "SvgDocument / ShapeFactory\nShape / GeometryShape\nRect / Circle / Ellipse / Line / Text / Group" as domain
+}
+package "src/infrastructure" {
+  component "FileDocumentStore\nSvgCodec / SvgTransform" as infra
+}
+main --> cli
+main --> app
+main --> infra
+cli --> app
+app --> domain
+app --> store
+infra ..|> store
+infra --> domain
+@enduml
