@@ -3,14 +3,18 @@ import { Value } from './Value.js';
 
 export class Group extends Shape {
   readonly tag = 'g';
+  constructor(id: string, private readonly documentRoot = false) { super(id); }
   private readonly members: Shape[] = [];
   override get children(): readonly Shape[] { return this.members.slice(); }
   override get isContainer(): boolean { return true; }
+  override contains(id: string): boolean {
+    return (!this.documentRoot && this.id === id) || this.children.some(child => child.contains(id));
+  }
   override initialize(args: readonly string[]): void {
     if (args.length) throw new Error('invalid parameters for g: expected only id');
   }
   override append(child: Shape, index = this.members.length): void {
-    if (child.contains(this.id)) throw new Error(`cannot move a container into its own descendant: ${child.id}`);
+    if (!this.documentRoot && child.contains(this.id)) throw new Error(`cannot move a container into its own descendant: ${child.id}`);
     if (this.contains(child.id)) throw new Error(`id already exists: ${child.id}`);
     this.members.splice(index, 0, child);
   }
@@ -25,7 +29,7 @@ export class Group extends Shape {
     this.members.forEach(child => child.scale(factor));
   }
   override clone(): Group {
-    const copy = new Group(this.id);
+    const copy = new Group(this.id, this.documentRoot);
     this.copyProperties(copy);
     this.members.forEach(child => copy.append(child.clone()));
     return copy;

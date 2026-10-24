@@ -7,12 +7,13 @@ export class SvgDocument {
   private canvasWidth: number;
   private canvasHeight: number;
   private viewport: string;
-  constructor(width = 800, height = 600, root = new Group('__root__'), viewBox?: string) {
+  constructor(width = 800, height = 600, root = new Group('__root__', true), viewBox?: string) {
     this.canvasWidth = Value.positive(width, 'width');
     this.canvasHeight = Value.positive(height, 'height');
     this.root = root;
     this.viewport = viewBox ?? `0 0 ${width} ${height}`;
   }
+  get attributes(): Readonly<Record<string, string>> { return this.root.attributes; }
   get width(): number { return this.canvasWidth; }
   get height(): number { return this.canvasHeight; }
   get viewBox(): string { return this.viewport; }
@@ -83,7 +84,6 @@ export class SvgDocument {
   }
   ungroup(id: string): void {
     const group = this.container(id);
-    if (group.attributes['data-kind'] !== undefined) throw new Error(`cannot ungroup composite shape: ${id}`);
     const parent = this.parent(group);
     if (parent === this.root) throw new Error(`cannot ungroup top-level container: ${id}`);
     const index = parent.children.indexOf(group);
